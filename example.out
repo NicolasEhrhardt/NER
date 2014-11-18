@@ -1,0 +1,9 @@
+EU	I-ORG	I-ORG
+rejects	O	O
+German	I-MISC	I-LOC
+call	O	O
+to	O	O
+boycott	O	O
+British	I-MISC	O
+lamb	O	I-PER
+.	O	O
