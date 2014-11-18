@@ -11,7 +11,7 @@ Clone repos. Done.
 Check
 =====
 
-    `cd java`
-    `ant`
+`$ cd java`
+`$ ant`
 
 It compiles? You are good to go.
