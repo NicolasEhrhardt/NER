@@ -5,10 +5,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
-import org.ejml.ops.MatrixIO;
-import org.ejml.ops.RandomMatrices;
 import org.ejml.simple.*;
-import sun.java2d.pipe.SpanShapeRenderer;
 
 
 public class FeatureFactory {
