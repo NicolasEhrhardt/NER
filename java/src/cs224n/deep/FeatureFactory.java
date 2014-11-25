@@ -4,10 +4,19 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
+
+import org.ejml.ops.MatrixIO;
+import org.ejml.ops.RandomMatrices;
 import org.ejml.simple.*;
+import sun.java2d.pipe.SpanShapeRenderer;
 
 
 public class FeatureFactory {
+
+    public static final String DOC_START = "-DOCSTART-";
+    public static final String START_TOKEN = "<s>";
+    public static final String END_TOKEN = "</s>";
+    public static final String UNK_TOKEN = "UUUNKKK";
 
 
 	private FeatureFactory() {
@@ -18,62 +27,88 @@ public class FeatureFactory {
 	static List<Datum> trainData;
 	/** Do not modify this method **/
 	public static List<Datum> readTrainData(String filename) throws IOException {
-        if (trainData==null) trainData= read(filename);
+        if (trainData==null) trainData = read(filename);
         return trainData;
 	}
 	
 	static List<Datum> testData;
 	/** Do not modify this method **/
 	public static List<Datum> readTestData(String filename) throws IOException {
-        if (testData==null) testData= read(filename);
+        if (testData==null) testData = read(filename);
         return testData;
 	}
 	
 	private static List<Datum> read(String filename)
 			throws FileNotFoundException, IOException {
-	    // TODO: you'd want to handle sentence boundaries
 		List<Datum> data = new ArrayList<Datum>();
 		BufferedReader in = new BufferedReader(new FileReader(filename));
+
+        data.add(new Datum(START_TOKEN, "O"));
+		for (String line = in.readLine(); line != null; line = in.readLine()) {
+            if (line.trim().length() == 0) {
+                continue;
+            }
+
+            String[] bits = line.split("\\s+");
+            String word = bits[0];
+            String label = bits[1];
+
+            if (word.equals(DOC_START)) {
+                continue;
+            }
+
+            word = word.toLowerCase();
+
+            if (word.equals(".")) {
+                data.add(new Datum(END_TOKEN, "O"));
+                data.add(new Datum(START_TOKEN, "O"));
+            }
+
+            Datum datum = new Datum(word, label);
+            data.add(datum);
+		}
+        data.add(new Datum(END_TOKEN, "O"));
+
+		return data;
+	}
+
+	public static SimpleMatrix allVecs; //access it directly in WindowModel
+    /**
+     * Look up table matrix with all word vectors as defined in lecture with dimensionality n x |V|
+     * @param vecFilename
+     * @return
+     * @throws IOException
+     */
+    public static SimpleMatrix readWordVectors(String vecFilename) throws IOException {
+		if (allVecs!=null) return allVecs;
+		//set allVecs from filename
+        allVecs = SimpleMatrix.loadCSV(vecFilename);
+        return allVecs;
+    }
+
+	public static Map<String, Integer> wordToNum = new HashMap<String, Integer>(); //access it directly in WindowModel
+	public static Map<Integer, String> numToWord = new HashMap<Integer, String>(); //access it directly in WindowModel
+    /**
+     * Load vocabulary in an index for efficient lookup.
+     * might be useful for word to number lookups
+     * @param vocabFilename
+     * @return number of words
+     * @throws IOException
+     */
+    public static Map<String, Integer> initializeVocab(String vocabFilename) throws IOException {
+        int index = 0;
+        BufferedReader in = new BufferedReader(new FileReader(vocabFilename));
 		for (String line = in.readLine(); line != null; line = in.readLine()) {
 			if (line.trim().length() == 0) {
 				continue;
 			}
 			String[] bits = line.split("\\s+");
 			String word = bits[0];
-			String label = bits[1];
-
-			Datum datum = new Datum(word, label);
-			data.add(datum);
+            wordToNum.put(word, index);
+            numToWord.put(index, word);
+            index++;
 		}
 
-		return data;
-	}
- 
- 
-	// Look up table matrix with all word vectors as defined in lecture with dimensionality n x |V|
-	static SimpleMatrix allVecs; //access it directly in WindowModel
-	public static SimpleMatrix readWordVectors(String vecFilename) throws IOException {
-		if (allVecs!=null) return allVecs;
-		return null;
-		//TODO implement this
-		//set allVecs from filename		
-
-	}
-	// might be useful for word to number lookups, just access them directly in WindowModel
-	public static HashMap<String, Integer> wordToNum = new HashMap<String, Integer>(); 
-	public static HashMap<Integer, String> numToWord = new HashMap<Integer, String>();
-
-	public static HashMap<String, Integer> initializeVocab(String vocabFilename) throws IOException {
-		//TODO: create this
 		return wordToNum;
 	}
- 
-
-
-
-
-
-
-
-
 }
