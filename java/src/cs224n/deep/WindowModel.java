@@ -101,28 +101,38 @@ public class WindowModel {
 
         List<Double> differences = new ArrayList<Double>();
         for (int i = 0; i < trials; i++) {
-            SimpleMatrix hbiased = concatenateWithBias(SimpleMatrix.random(hiddenSize, 1, 0, 1, rand));
             SimpleMatrix y = indicator(K, rand.nextInt(K));
+            SimpleMatrix hbiased = concatenateWithBias(SimpleMatrix.random(hiddenSize, 1, 0, 1, rand));
             SimpleMatrix Utest = helperInitWeights(U.numCols(), U.numRows(), rand);
-            SimpleMatrix eps = SimpleMatrix.random(Utest.numRows(), Utest.numCols(), 0, precision, rand);
-            SimpleMatrix Ueps = Utest.plus(eps);
 
             SimpleMatrix trueGrad = computeUgradFromUh(y, Utest, hbiased);
-            double check = trueGrad.elementMult(eps).elementSum();
-            double diff = computeCostFromUh(y, Ueps, hbiased) - computeCostFromUh(y, Utest, hbiased);
 
-            differences.add(Math.abs(check - diff) / precision);
+            for (int row = 0; row < Utest.numRows(); row++) {
+                for (int col = 0; col < Utest.numCols(); col++) {
+                    SimpleMatrix eps = new SimpleMatrix(Utest.numRows(), Utest.numCols());
+                    eps.zero();
+                    eps.set(row, col, precision);
+
+                    SimpleMatrix Upluseps = Utest.plus(eps);
+                    SimpleMatrix Uminuseps = Utest.minus(eps);
+
+                    double diff = (computeCostFromUh(y, Upluseps, hbiased) - computeCostFromUh(y, Uminuseps, hbiased))
+                            / (2 * precision);
+
+                    differences.add(Math.abs( diff - trueGrad.get(row, col) ));
+                }
+            }
         }
         return Collections.max(differences);
     }
 
     // W grad
 
-    private SimpleMatrix computeWgradFromDelta(SimpleMatrix delta, SimpleMatrix xbiased) {
+    private static SimpleMatrix computeWgradFromDelta(SimpleMatrix delta, SimpleMatrix xbiased) {
         return delta.mult(xbiased.transpose());
     }
 
-    private SimpleMatrix computeWgradFromUWx(SimpleMatrix y, SimpleMatrix U, SimpleMatrix W, SimpleMatrix xbiased) {
+    private static SimpleMatrix computeWgradFromUWx(SimpleMatrix y, SimpleMatrix U, SimpleMatrix W, SimpleMatrix xbiased) {
         SimpleMatrix Utruncated = withoutLastCol(U);
 
         SimpleMatrix z = W.mult(xbiased);
@@ -138,29 +148,39 @@ public class WindowModel {
 
         List<Double> differences = new ArrayList<Double>();
         for (int i = 0; i < trials; i++) {
-            SimpleMatrix x = concatenateWithBias(SimpleMatrix.random(windowSize * wordSize, 1, 0, 1, rand));
             SimpleMatrix y = indicator(K, rand.nextInt(K));
+            SimpleMatrix xtest = concatenateWithBias(SimpleMatrix.random(windowSize * wordSize, 1, 0, 1, rand));
             SimpleMatrix Wtest = helperInitWeights(W.numCols(), W.numRows(), rand);
             SimpleMatrix Utest = helperInitWeights(U.numCols(), U.numRows(), rand);
-            SimpleMatrix eps = SimpleMatrix.random(Wtest.numRows(), Wtest.numCols(), 0, precision, rand);
-            SimpleMatrix Weps = Wtest.plus(eps);
 
-            SimpleMatrix trueGrad = computeWgradFromUWx(y, Utest, Wtest, x);
-            double check = trueGrad.elementMult(eps).elementSum();
-            double diff = computeCostFromUWx(y, Utest, Weps, x) - computeCostFromUWx(y, Utest, Wtest, x);
+            SimpleMatrix trueGrad = computeWgradFromUWx(y, Utest, Wtest, xtest);
 
-            differences.add(Math.abs(check - diff) / precision);
+           for (int row = 0; row < Wtest.numRows(); row++) {
+                for (int col = 0; col < Wtest.numCols(); col++) {
+                    SimpleMatrix eps = new SimpleMatrix(Wtest.numRows(), Wtest.numCols());
+                    eps.zero();
+                    eps.set(row, col, precision);
+
+                    SimpleMatrix Wpluseps = Wtest.plus(eps);
+                    SimpleMatrix Wminuseps = Wtest.minus(eps);
+
+                    double diff = (computeCostFromUWx(y, Utest, Wpluseps, xtest) - computeCostFromUWx(y, Utest, Wminuseps, xtest))
+                            / (2 * precision);
+
+                    differences.add(Math.abs( diff - trueGrad.get(row, col) ));
+                }
+            }
         }
         return Collections.max(differences);
     }
 
     // X gradient
 
-    private SimpleMatrix computeXgradFromDelta(SimpleMatrix delta, SimpleMatrix Wtruncated) {
+    private static SimpleMatrix computeXgradFromDelta(SimpleMatrix delta, SimpleMatrix Wtruncated) {
         return Wtruncated.transpose().mult(delta);
     }
 
-    private SimpleMatrix computeXgradFromUWx(SimpleMatrix y, SimpleMatrix U, SimpleMatrix W, SimpleMatrix xtruncated) {
+    private static SimpleMatrix computeXgradFromUWx(SimpleMatrix y, SimpleMatrix U, SimpleMatrix W, SimpleMatrix xtruncated) {
         SimpleMatrix xbiased = concatenateWithBias(xtruncated);
         SimpleMatrix Utruncated = withoutLastCol(U);
         SimpleMatrix Wtruncated = withoutLastCol(W);
@@ -178,19 +198,28 @@ public class WindowModel {
 
         List<Double> differences = new ArrayList<Double>();
         for (int i = 0; i < trials; i++) {
-            SimpleMatrix xtest = SimpleMatrix.random(windowSize * wordSize, 1, 0, 1, rand);
             SimpleMatrix y = indicator(K, rand.nextInt(K));
+            SimpleMatrix xtest = SimpleMatrix.random(windowSize * wordSize, 1, 0, 1, rand);
             SimpleMatrix Wtest = helperInitWeights(W.numCols(), W.numRows(), rand);
             SimpleMatrix Utest = helperInitWeights(U.numCols(), U.numRows(), rand);
-            SimpleMatrix eps = SimpleMatrix.random(xtest.numRows(), xtest.numCols(), 0, precision, rand);
-            SimpleMatrix xeps = xtest.plus(eps);
 
             SimpleMatrix trueGrad = computeXgradFromUWx(y, Utest, Wtest, xtest);
-            double check = trueGrad.elementMult(eps).elementSum();
-            double diff = computeCostFromUWx(y, Utest, Wtest, concatenateWithBias(xeps)) -
-                    computeCostFromUWx(y, Utest, Wtest, concatenateWithBias(xtest));
 
-            differences.add(Math.abs(check - diff) / precision);
+            for (int row = 0; row < xtest.numRows(); row++) {
+                for (int col = 0; col < xtest.numCols(); col++) {
+                    SimpleMatrix eps = new SimpleMatrix(xtest.numRows(), xtest.numCols());
+                    eps.zero();
+                    eps.set(row, col, precision);
+
+                    SimpleMatrix xpluseps = concatenateWithBias(xtest.plus(eps));
+                    SimpleMatrix xminuseps = concatenateWithBias(xtest.minus(eps));
+
+                    double diff = (computeCostFromUWx(y, Utest, Wtest, xpluseps) - computeCostFromUWx(y, Utest, Wtest, xminuseps))
+                            / (2 * precision);
+
+                    differences.add(Math.abs( diff - trueGrad.get(row, col) ));
+                }
+            }
         }
         return Collections.max(differences);
     }
@@ -239,6 +268,7 @@ public class WindowModel {
         SimpleMatrix Utruncated = withoutLastCol(U);
         SimpleMatrix Wtruncated = withoutLastCol(W);
 
+        assert (labels.contains(label));
         SimpleMatrix y = indicator(K, labels.indexOf(label));
         SimpleMatrix error = computeError(y, p);
         SimpleMatrix delta = computeDelta(error, Utruncated, z);
@@ -253,7 +283,6 @@ public class WindowModel {
         // Update W
         W.set(W.plus(lr, Wgrad));
 
-
         // Update x -> L
         x.set(x.plus(lr, Xgrad));
 
@@ -266,18 +295,18 @@ public class WindowModel {
     /**
      * Simplest SGD training
      */
-    public void train(List<Datum> _trainData ){
+    public void train(List<Datum> trainData) {
 
-        int count = 0;
         SimpleMatrix Usaved = U.copy();
         SimpleMatrix Wsaved = W.copy();
         SimpleMatrix Lsaved = L.copy();
 
         for (int epoch = 0; epoch < 10; epoch++) {
+            int count = 0;
             List<Datum> buffer = new ArrayList<Datum>();
-            for (Datum datum : _trainData) {
+            for (Datum datum : trainData) {
 
-                // Clear buffer if we are restartin a sentence
+                // Clear buffer if we are restarting a sentence
                 if (datum.label.equals(FeatureFactory.START_TOKEN)) {
                     buffer.clear();
                 }
@@ -293,16 +322,13 @@ public class WindowModel {
                     count++;
                     buffer.remove(0);
                 }
-
-                if ((count % 1000) == 0) {
-                    System.out.println(String.format("Viewd %d, delta U %f, delta W %f, delta L %f",
-                            count, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF()));
-                    Usaved = U.copy();
-                    Wsaved = W.copy();
-                    Lsaved = L.copy();
-                }
             }
-        }
+            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f",
+                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF()));
+            Usaved = U.copy();
+            Wsaved = W.copy();
+            Lsaved = L.copy();
+         }
     }
 
     public void test(List<Datum> testData){

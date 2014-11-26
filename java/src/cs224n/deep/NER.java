@@ -22,19 +22,25 @@ public class NER {
         //TODO: Implement this function (just reads in vocab and word vectors)
 
         // initialize model
+        System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
         WindowModel model = new WindowModel(3, 50, 100, 0.001,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
-        SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors_sized.txt");
+        SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
         model.loadVocab(allVecs);
         model.initWeights();
-        System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-5)));
-        System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(100, 1e-5)));
-        System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(100, 1e-5)));
 
-        //TODO: Implement those two functions
+        System.out.println("-- Computing gradient checks --");
+        System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));
+        System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(1, 1e-4)));
+        System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
+
+
+        System.out.println("-- Training data --");
         model.train(trainData);
+
+        //System.out.println("-- Test data --");
         //model.test(testData);
     }
 }

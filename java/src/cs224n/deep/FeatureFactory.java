@@ -5,6 +5,8 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
+import org.ejml.data.DenseMatrix64F;
+import org.ejml.ops.MatrixIO;
 import org.ejml.simple.*;
 
 
@@ -79,7 +81,7 @@ public class FeatureFactory {
     public static SimpleMatrix readWordVectors(String vecFilename) throws IOException {
 		if (allVecs!=null) return allVecs;
 		//set allVecs from filename
-        allVecs = SimpleMatrix.loadCSV(vecFilename);
+        allVecs = SimpleMatrix.wrap(MatrixIO.loadCSV(vecFilename, 100232, 50));
         return allVecs;
     }
 
