@@ -5,7 +5,6 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
 
-import org.ejml.data.DenseMatrix64F;
 import org.ejml.ops.MatrixIO;
 import org.ejml.simple.*;
 
@@ -66,6 +65,7 @@ public class FeatureFactory {
             Datum datum = new Datum(word, label);
             data.add(datum);
 		}
+        in.close();
         data.add(new Datum(END_TOKEN, "O"));
 
 		return data;
@@ -107,7 +107,7 @@ public class FeatureFactory {
             numToWord.put(index, word);
             index++;
 		}
-
+        in.close();
 		return wordToNum;
 	}
 }
