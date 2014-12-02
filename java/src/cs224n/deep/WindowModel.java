@@ -369,21 +369,23 @@ public class WindowModel {
             }
             // If the buffer is the right size, computes P and remove the oldest token
             if (buffer.size() == windowSize) {
-            	P = computePFromBuffer(buffer);
-                // gets the most probable tag
-            	int idx_max = 0;
-            	double p_max = 0;
-            	for (int i = 0; i < P.getNumElements(); i++){
-            		if (P.get(i) > p_max){
-            			p_max = P.get(i);
-            			idx_max = i;
-            		}
+            	if (!buffer.get(windowSize/2).word.equals("<s>") && !buffer.get(windowSize/2).word.equals("</s>")){
+            		P = computePFromBuffer(buffer);
+                    // gets the most probable tag
+                	int idx_max = 0;
+                	double p_max = 0;
+                	for (int i = 0; i < P.getNumElements(); i++){
+                		if (P.get(i) > p_max){
+                			p_max = P.get(i);
+                			idx_max = i;
+                		}
+                	}
+                	// prints the result corresponding to the given buffer
+            		fw.write(buffer.get(windowSize/2).word+"\t");
+            		fw.write(buffer.get(windowSize/2).label+"\t");
+            		fw.write(this.labels.get(idx_max)+"\n");                    
             	}
-            	// prints the result corresponding to the given buffer
-        		fw.write(buffer.get(windowSize/2).word+"\t");
-        		fw.write(buffer.get(windowSize/2).label+"\t");
-        		fw.write(this.labels.get(idx_max)+"\n");
-                buffer.remove(0);
+            	buffer.remove(0);
             }
     	}
     	fw.close();
