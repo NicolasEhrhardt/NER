@@ -253,6 +253,58 @@ public class WindowModel {
 
     // Processing helpers
 
+    public List<List<Datum>> yieldExamples(List<Datum> data) {
+        List<List<Datum>> examples = new ArrayList<List<Datum>>();
+
+        List<Datum> buffer = new ArrayList<Datum>();
+        for (Datum datum : data) {
+
+            if (datum.word.equals(FeatureFactory.START_TOKEN)) {
+                // Clear buffer if we are restarting a sentence
+                buffer.clear();
+
+                // Padding when entering sentence
+                for (int i = 0; i < windowSize / 2; i++) {
+                    buffer.add(datum);
+                }
+
+                // Done for token
+                continue;
+            }
+
+            if (datum.word.equals(FeatureFactory.END_TOKEN)) {
+                // Padding until the end of the sentence
+                int paddingNeeded = windowSize - buffer.size();
+                for (int i = 0; i < paddingNeeded; i++) {
+                    buffer.add(datum);
+                }
+
+                // Continue to process until last word is in the middle
+                for (int i = 0; i < (windowSize / 2) - paddingNeeded; i++) {
+                    examples.add(new ArrayList<Datum>(buffer));
+                    buffer.remove(0);
+                    buffer.add(datum);
+                }
+
+                // Done for token
+                continue;
+            }
+
+            // Add token if we haven't reached the window size
+            if (buffer.size() < windowSize) {
+                buffer.add(datum);
+            }
+
+            if (buffer.size() == windowSize) {
+                // If the buffer is the right size, update the weights and remove the oldest token
+                examples.add(new ArrayList<Datum>(buffer));
+                buffer.remove(0);
+            }
+        }
+
+        return examples;
+    }
+
     private int getWordIndex(String word) {
         if (wordToNum.containsKey(word)) {
             return wordToNum.get(word);
@@ -322,58 +374,6 @@ public class WindowModel {
             int index = inputIndex.get(i);
             L.insertIntoThis(index, 0, x.extractMatrix(i * wordSize, (i + 1) * wordSize, 0, 1).transpose());
         }
-    }
-
-    public List<List<Datum>> yieldExamples(List<Datum> data) {
-        List<List<Datum>> examples = new ArrayList<List<Datum>>();
-
-        List<Datum> buffer = new ArrayList<Datum>();
-        for (Datum datum : data) {
-
-            if (datum.word.equals(FeatureFactory.START_TOKEN)) {
-                // Clear buffer if we are restarting a sentence
-                buffer.clear();
-
-                // Padding when entering sentence
-                for (int i = 0; i < windowSize / 2; i++) {
-                    buffer.add(datum);
-                }
-
-                // Done for token
-                continue;
-            }
-
-            if (datum.word.equals(FeatureFactory.END_TOKEN)) {
-                // Padding until the end of the sentence
-                int paddingNeeded = windowSize - buffer.size();
-                for (int i = 0; i < paddingNeeded; i++) {
-                    buffer.add(datum);
-                }
-
-                // Continue to process until last word is in the middle
-                for (int i = 0; i < (windowSize / 2) - paddingNeeded; i++) {
-                    examples.add(new ArrayList<Datum>(buffer));
-                    buffer.remove(0);
-                    buffer.add(datum);
-                }
-
-                // Done for token
-                continue;
-            }
-
-            // Add token if we haven't reached the window size
-            if (buffer.size() < windowSize) {
-                buffer.add(datum);
-            }
-
-            if (buffer.size() == windowSize) {
-                // If the buffer is the right size, update the weights and remove the oldest token
-                examples.add(new ArrayList<Datum>(buffer));
-                buffer.remove(0);
-            }
-        }
-
-        return examples;
     }
 
     /**
