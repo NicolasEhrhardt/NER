@@ -81,8 +81,19 @@ public class FeatureFactory {
     public static SimpleMatrix readWordVectors(String vecFilename) throws IOException {
 		if (allVecs!=null) return allVecs;
 		//set allVecs from filename
-        allVecs = SimpleMatrix.wrap(MatrixIO.loadCSV(vecFilename, 100232, 50));
-        return allVecs;
+        return readMatrixFile(vecFilename, 100232, 50);
+    }
+
+    /**
+     * Helper to read a matrix from a file
+     * @param filename
+     * @param numrows
+     * @param numcols
+     * @return
+     * @throws IOException
+     */
+    public static SimpleMatrix readMatrixFile(String filename, int numrows, int numcols) throws IOException {
+        return SimpleMatrix.wrap(MatrixIO.loadCSV(filename, numrows, numcols));
     }
 
 	public static Map<String, Integer> wordToNum = new HashMap<String, Integer>(); //access it directly in WindowModel
