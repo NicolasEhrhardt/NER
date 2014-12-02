@@ -31,7 +31,7 @@ public class WindowModel {
     }
 
     /**
-     * Loders: load preexisting files
+     * Loaders and dumpers
      */
 
     public void loadVocab(SimpleMatrix allVec) {
@@ -73,6 +73,9 @@ public class WindowModel {
         return SimpleMatrix.random(fanout, fanin, -eps, +eps, rand);
     }
 
+    /**
+     * Computation helpers
+     */
 
     // Compute Error
 
@@ -114,6 +117,10 @@ public class WindowModel {
     private static double computeCostFromUWx(SimpleMatrix y, SimpleMatrix U, SimpleMatrix W, SimpleMatrix xbiased) {
         return computeCostFromUh(y, U, concatenateWithBias(elementwiseApplyTanh(W.mult(xbiased))));
     }
+
+    /**
+     * Gradient checks
+     */
 
     // U grad
 
@@ -255,8 +262,14 @@ public class WindowModel {
         return Collections.max(differences);
     }
 
-    // Processing helpers
+    /**
+     * Processing helpers
+     */
 
+    /**
+     * @param data: input list of Datum
+     * @return list of examples matching each word to label
+     */
     public List<List<Datum>> yieldExamples(List<Datum> data) {
         List<List<Datum>> examples = new ArrayList<List<Datum>>();
 
@@ -309,6 +322,11 @@ public class WindowModel {
         return examples;
     }
 
+    /**
+     * Get word index in the matrix L
+     * @param word
+     * @return
+     */
     private int getWordIndex(String word) {
         if (wordToNum.containsKey(word)) {
             return wordToNum.get(word);
@@ -317,6 +335,11 @@ public class WindowModel {
         }
     }
 
+    /**
+     * Get all words index from list of Datum
+     * @param buffer
+     * @return
+     */
     private List<Integer> getLindFromBuffer(List<Datum> buffer) {
         List<Integer> inputIndex = new ArrayList<Integer>();
 
@@ -329,6 +352,11 @@ public class WindowModel {
         return inputIndex;
     }
 
+    /**
+     * Get vector representation (X) of phrase
+     * @param inputIndex
+     * @return
+     */
     private SimpleMatrix getXFromLind(List<Integer> inputIndex) {
         List<SimpleMatrix> inputVectors = new ArrayList<SimpleMatrix>();
         for (int index: inputIndex) {
@@ -344,6 +372,10 @@ public class WindowModel {
      * Simplest SGD training
      */
 
+    /**
+     * Update U, W, L based on one example, to be used in the SGD
+     * @param buffer
+     */
     private void updateWeights(List<Datum> buffer) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         String label = buffer.get(windowSize / 2).label;
@@ -384,7 +416,11 @@ public class WindowModel {
         }
     }
 
-   public void train(List<Datum> trainData) {
+    /**
+     * Train the three matrices using the passed training data
+     * @param trainData
+     */
+    public void train(List<Datum> trainData) {
 
         SimpleMatrix Usaved = U.copy();
         SimpleMatrix Wsaved = W.copy();
@@ -402,13 +438,18 @@ public class WindowModel {
             Usaved = U.copy();
             Wsaved = W.copy();
             Lsaved = L.copy();
-         }
-   }
+        }
+    }
 
    /**
     * Prediction and testing
     */
 
+    /**
+     * Predict label word in the middle of buffer
+     * @param buffer
+     * @return
+     */
     public String predictLabel(List<Datum> buffer) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         SimpleMatrix x = getXFromLind(inputIndex);
@@ -417,6 +458,12 @@ public class WindowModel {
         return labels.get(argmax(P));
     }
 
+    /**
+     * Test data and output to file
+     * @param testData
+     * @param outputFile
+     * @throws IOException
+     */
     public void test(List<Datum> testData, String outputFile) throws IOException {
     	FileWriter fw = new FileWriter(outputFile);
         List<List<Datum>> allExamples = yieldExamples(testData);
