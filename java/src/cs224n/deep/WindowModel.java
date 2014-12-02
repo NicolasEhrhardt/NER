@@ -1,4 +1,6 @@
 package cs224n.deep;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.lang.*;
 import java.util.*;
 
@@ -70,6 +72,25 @@ public class WindowModel {
         return computePFromUh(U, concatenateWithBias(h));
     }
 
+    private SimpleMatrix computePFromBuffer(List<Datum> buffer) {
+    	List<Integer> inputIndex = new ArrayList<Integer>();
+        for (Datum datum: buffer) {
+            // get vector representation
+            int index = getWordIndex(datum.word);
+            inputIndex.add(index);
+        }
+
+        List<SimpleMatrix> inputVectors = new ArrayList<SimpleMatrix>();
+        for (int index: inputIndex) {
+            SimpleMatrix curVec = L.extractVector(true, index);
+            inputVectors.add(curVec.transpose());
+        }
+
+        SimpleMatrix x = concatenate(inputVectors);
+        SimpleMatrix xbiased = concatenateWithBias(x);
+        return computePFromUWx(this.U, this.W, xbiased);
+    }
+    
     // Cost
 
     private static double computeCostFromP(SimpleMatrix y, SimpleMatrix p) {
@@ -331,8 +352,41 @@ public class WindowModel {
          }
     }
 
-    public void test(List<Datum> testData){
-        // TODO
+    public void test(List<Datum> testData) throws IOException {
+
+    	FileWriter fw = new FileWriter("test_prediction.out");
+    	List<Datum> buffer = new ArrayList<Datum>();
+    	SimpleMatrix P = new SimpleMatrix(this.windowSize*this.wordSize,1);
+    	
+    	for (Datum datum : testData) {
+    		// Clear buffer if we are restarting a sentence
+            if (datum.label.equals(FeatureFactory.START_TOKEN)) {
+                buffer.clear();
+            }
+            // Add token if we haven't reached the window size
+            if (buffer.size() < windowSize) {
+                buffer.add(datum);
+            }
+            // If the buffer is the right size, computes P and remove the oldest token
+            if (buffer.size() == windowSize) {
+            	P = computePFromBuffer(buffer);
+                buffer.remove(0);
+                // gets the most probable tag
+            	int idx_max = 0;
+            	double p_max = 0;
+            	for (int i = 0; i < P.getNumElements(); i++){
+            		if (P.get(i) > p_max){
+            			p_max = P.get(i);
+            			idx_max = i;
+            		}
+            	}
+            	// prints the result corresponding to the given buffer
+        		fw.write(buffer.get(windowSize/2).word+"\t");
+        		fw.write(buffer.get(windowSize/2).label+"\t");
+        		fw.write(this.labels.get(idx_max)+"\n");
+            }
+    	}
+    	fw.close();
     }
 
 }

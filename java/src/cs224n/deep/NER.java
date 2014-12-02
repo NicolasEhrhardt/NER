@@ -40,7 +40,7 @@ public class NER {
         System.out.println("-- Training data --");
         model.train(trainData);
 
-        //System.out.println("-- Test data --");
-        //model.test(testData);
+        System.out.println("-- Test data --");
+        model.test(testData);
     }
 }
