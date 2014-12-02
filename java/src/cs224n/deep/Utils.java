@@ -117,4 +117,16 @@ public class Utils {
         SimpleMatrix noise = SimpleMatrix.random(M.numRows(), M.numCols(), 0, eps, rand);
         return M.plus(noise);
     }
+
+    public static int argmax(SimpleMatrix P) {
+        int idx_max = 0;
+        double p_max = 0;
+        for (int i = 0; i < P.getNumElements(); i++){
+            if (P.get(i) > p_max){
+                p_max = P.get(i);
+                idx_max = i;
+            }
+        }
+        return idx_max;
+    }
 }

@@ -18,7 +18,8 @@ public class WindowModel {
     public Map<String, Integer> wordToNum;
 
     public WindowModel(int windowSize, int wordSize, int hiddenSize, double lr,
-                       Map<String, Integer> wordToNum, List<String> labels){
+                       Map<String, Integer> wordToNum, List<String> labels) {
+        assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
         this.wordSize = wordSize;
         this.hiddenSize = hiddenSize;
@@ -96,25 +97,6 @@ public class WindowModel {
         return computePFromUh(U, concatenateWithBias(h));
     }
 
-    private SimpleMatrix computePFromBuffer(List<Datum> buffer) {
-    	List<Integer> inputIndex = new ArrayList<Integer>();
-        for (Datum datum: buffer) {
-            // get vector representation
-            int index = getWordIndex(datum.word);
-            inputIndex.add(index);
-        }
-
-        List<SimpleMatrix> inputVectors = new ArrayList<SimpleMatrix>();
-        for (int index: inputIndex) {
-            SimpleMatrix curVec = L.extractVector(true, index);
-            inputVectors.add(curVec.transpose());
-        }
-
-        SimpleMatrix x = concatenate(inputVectors);
-        SimpleMatrix xbiased = concatenateWithBias(x);
-        return computePFromUWx(this.U, this.W, xbiased);
-    }
-    
     // Cost
 
     private static double computeCostFromP(SimpleMatrix y, SimpleMatrix p) {
@@ -279,23 +261,19 @@ public class WindowModel {
         }
     }
 
-    private void updateWeights(List<Datum> buffer) {
+    private List<Integer> getLindFromBuffer(List<Datum> buffer) {
         List<Integer> inputIndex = new ArrayList<Integer>();
 
-        String label = "O";
-        int pos = 0;
-        for (Datum datum: buffer) {
-            // store label of middle of buffer
-            if (pos == windowSize / 2) {
-                label = datum.label;
-            }
-
+        for (Datum datum : buffer) {
             // get vector representation
             int index = getWordIndex(datum.word);
             inputIndex.add(index);
-            pos++;
         }
 
+        return inputIndex;
+    }
+
+    private SimpleMatrix getXFromLind(List<Integer> inputIndex) {
         List<SimpleMatrix> inputVectors = new ArrayList<SimpleMatrix>();
         for (int index: inputIndex) {
             SimpleMatrix curVec = L.extractVector(true, index);
@@ -303,8 +281,17 @@ public class WindowModel {
         }
 
         SimpleMatrix x = concatenate(inputVectors);
+        return x;
+    }
+
+    private void updateWeights(List<Datum> buffer) {
+        List<Integer> inputIndex = getLindFromBuffer(buffer);
+        String label = buffer.get(windowSize / 2).label;
+
+        SimpleMatrix x = getXFromLind(inputIndex);
         SimpleMatrix xbiased = concatenateWithBias(x);
         SimpleMatrix z = W.mult(xbiased);
+
         SimpleMatrix h = elementwiseApplyTanh(z);
         SimpleMatrix hbiased = concatenateWithBias(h);
         SimpleMatrix v = U.mult(hbiased);
@@ -337,6 +324,58 @@ public class WindowModel {
         }
     }
 
+    public List<List<Datum>> yieldExamples(List<Datum> data) {
+        List<List<Datum>> examples = new ArrayList<List<Datum>>();
+
+        List<Datum> buffer = new ArrayList<Datum>();
+        for (Datum datum : data) {
+
+            if (datum.word.equals(FeatureFactory.START_TOKEN)) {
+                // Clear buffer if we are restarting a sentence
+                buffer.clear();
+
+                // Padding when entering sentence
+                for (int i = 0; i < windowSize / 2; i++) {
+                    buffer.add(datum);
+                }
+
+                // Done for token
+                continue;
+            }
+
+            if (datum.word.equals(FeatureFactory.END_TOKEN)) {
+                // Padding until the end of the sentence
+                int paddingNeeded = windowSize - buffer.size();
+                for (int i = 0; i < paddingNeeded; i++) {
+                    buffer.add(datum);
+                }
+
+                // Continue to process until last word is in the middle
+                for (int i = 0; i < (windowSize / 2) - paddingNeeded; i++) {
+                    examples.add(new ArrayList<Datum>(buffer));
+                    buffer.remove(0);
+                    buffer.add(datum);
+                }
+
+                // Done for token
+                continue;
+            }
+
+            // Add token if we haven't reached the window size
+            if (buffer.size() < windowSize) {
+                buffer.add(datum);
+            }
+
+            if (buffer.size() == windowSize) {
+                // If the buffer is the right size, update the weights and remove the oldest token
+                examples.add(new ArrayList<Datum>(buffer));
+                buffer.remove(0);
+            }
+        }
+
+        return examples;
+    }
+
     /**
      * Simplest SGD training
      */
@@ -346,28 +385,13 @@ public class WindowModel {
         SimpleMatrix Wsaved = W.copy();
         SimpleMatrix Lsaved = L.copy();
 
+        List<List<Datum>> allExamples = yieldExamples(trainData);
+
         for (int epoch = 0; epoch < 10; epoch++) {
-            int count = 0;
-            List<Datum> buffer = new ArrayList<Datum>();
-            for (Datum datum : trainData) {
-
-                // Clear buffer if we are restarting a sentence
-                if (datum.label.equals(FeatureFactory.START_TOKEN)) {
-                    buffer.clear();
-                }
-
-                // Add token if we haven't reached the window size
-                if (buffer.size() < windowSize) {
-                    buffer.add(datum);
-                }
-
-                // If the buffer is the right size, update the weights and remove the oldest token
-                if (buffer.size() == windowSize) {
-                    updateWeights(buffer);
-                    count++;
-                    buffer.remove(0);
-                }
+            for (List<Datum> buffer: allExamples) {
+                updateWeights(buffer);
             }
+
             System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f",
                     epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF()));
             Usaved = U.copy();
@@ -376,43 +400,23 @@ public class WindowModel {
          }
     }
 
-    public void test(List<Datum> testData) throws IOException {
-
-    	FileWriter fw = new FileWriter("test_prediction.out");
-    	List<Datum> buffer = new ArrayList<Datum>();
-    	SimpleMatrix P = new SimpleMatrix(this.windowSize*this.wordSize,1);
-    	
-    	for (Datum datum : testData) {
-    		// Clear buffer if we are restarting a sentence
-            if (datum.label.equals(FeatureFactory.START_TOKEN)) {
-                buffer.clear();
-            }
-            // Add token if we haven't reached the window size
-            if (buffer.size() < windowSize) {
-                buffer.add(datum);
-            }
-            // If the buffer is the right size, computes P and remove the oldest token
-            if (buffer.size() == windowSize) {
-            	if (!buffer.get(windowSize/2).word.equals("<s>") && !buffer.get(windowSize/2).word.equals("</s>")){
-            		P = computePFromBuffer(buffer);
-                    // gets the most probable tag
-                	int idx_max = 0;
-                	double p_max = 0;
-                	for (int i = 0; i < P.getNumElements(); i++){
-                		if (P.get(i) > p_max){
-                			p_max = P.get(i);
-                			idx_max = i;
-                		}
-                	}
-                	// prints the result corresponding to the given buffer
-            		fw.write(buffer.get(windowSize/2).word+"\t");
-            		fw.write(buffer.get(windowSize/2).label+"\t");
-            		fw.write(this.labels.get(idx_max)+"\n");                    
-            	}
-            	buffer.remove(0);
-            }
-    	}
-    	fw.close();
+    public String predictLabel(List<Datum> buffer) {
+        List<Integer> inputIndex = getLindFromBuffer(buffer);
+        SimpleMatrix x = getXFromLind(inputIndex);
+        SimpleMatrix xbiased = concatenateWithBias(x);
+        SimpleMatrix P = computePFromUWx(this.U, this.W, xbiased);
+        return labels.get(argmax(P));
     }
 
+    public void test(List<Datum> testData, String outputFile) throws IOException {
+    	FileWriter fw = new FileWriter(outputFile);
+        List<List<Datum>> allExamples = yieldExamples(testData);
+
+        for (List<Datum> buffer: allExamples) {
+            Datum middleWord = buffer.get(windowSize / 2);
+            String predictedLabel = predictLabel(buffer);
+            fw.write(String.format("%s\t%s\t%s\n", middleWord.word, middleWord.label, predictedLabel));
+        }
+    	fw.close();
+    }
 }

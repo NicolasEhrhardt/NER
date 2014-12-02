@@ -60,10 +60,10 @@ public class FeatureFactory {
             if (word.equals(".")) {
                 data.add(new Datum(END_TOKEN, "O"));
                 data.add(new Datum(START_TOKEN, "O"));
+            } else {
+                Datum datum = new Datum(word, label);
+                data.add(datum);
             }
-
-            Datum datum = new Datum(word, label);
-            data.add(datum);
 		}
         in.close();
         data.add(new Datum(END_TOKEN, "O"));

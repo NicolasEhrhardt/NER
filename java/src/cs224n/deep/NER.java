@@ -24,12 +24,11 @@ public class NER {
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
-        WindowModel model = new WindowModel(3, 50, 100, 0.001,
+        WindowModel model = new WindowModel(7, 50, 100, 0.001,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
-        //SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
-
         // Standard loading
+        //SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
         //model.loadVocab(allVecs);
         //model.initWeights();
 
@@ -44,14 +43,14 @@ public class NER {
         //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
 
 
-        //System.out.println("-- Training data --");
-        //model.train(trainData);
+        System.out.println("-- Training data --");
+        model.train(trainData);
 
-        //model.dumpVocab("data/saved-vocab.csv");
-        //model.dumpWeightsU("data/saved-U.csv");
-        //model.dumpWeigthsW("data/saved-W.csv");
+        model.dumpVocab("data/saved-vocab.csv");
+        model.dumpWeightsU("data/saved-U.csv");
+        model.dumpWeigthsW("data/saved-W.csv");
 
         System.out.println("-- Test data --");
-        model.test(testData);
+        model.test(testData, "test_prediction.out");
     }
 }
