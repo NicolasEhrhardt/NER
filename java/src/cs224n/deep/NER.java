@@ -27,18 +27,29 @@ public class NER {
         WindowModel model = new WindowModel(3, 50, 100, 0.001,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
-        SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
-        model.loadVocab(allVecs);
-        model.initWeights();
+        //SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
 
-        System.out.println("-- Computing gradient checks --");
-        System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));
-        System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(1, 1e-4)));
-        System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
+        // Standard loading
+        //model.loadVocab(allVecs);
+        //model.initWeights();
+
+        // Loading from files
+        model.loadVocab(SimpleMatrix.loadCSV("data/saved-vocab.csv"));
+        model.loadWeightsU(SimpleMatrix.loadCSV("data/saved-U.csv"));
+        model.loadWeightsW(SimpleMatrix.loadCSV("data/saved-W.csv"));
+
+        //System.out.println("-- Computing gradient checks --");
+        //System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));
+        //System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(1, 1e-4)));
+        //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
 
 
-        System.out.println("-- Training data --");
-        model.train(trainData);
+        //System.out.println("-- Training data --");
+        //model.train(trainData);
+
+        //model.dumpVocab("data/saved-vocab.csv");
+        //model.dumpWeightsU("data/saved-U.csv");
+        //model.dumpWeigthsW("data/saved-W.csv");
 
         System.out.println("-- Test data --");
         model.test(testData);

@@ -29,8 +29,32 @@ public class WindowModel {
         this.K = labels.size();
     }
 
+    /**
+     * Loders: load preexisting files
+     */
+
     public void loadVocab(SimpleMatrix allVec) {
         this.L = allVec;
+    }
+
+    public void loadWeightsW(SimpleMatrix W) {
+        this.W = W;
+    }
+
+    public void loadWeightsU(SimpleMatrix U) {
+        this.U = U;
+    }
+
+    public void dumpVocab(String filename) throws IOException {
+        L.saveToFileCSV(filename);
+    }
+
+    public void dumpWeigthsW(String filename) throws IOException {
+        W.saveToFileCSV(filename);
+    }
+
+    public void dumpWeightsU(String filename) throws IOException {
+        U.saveToFileCSV(filename);
     }
 
     /**
