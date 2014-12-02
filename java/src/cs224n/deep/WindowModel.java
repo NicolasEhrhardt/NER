@@ -88,6 +88,10 @@ public class WindowModel {
 
     // Compute P
 
+    private SimpleMatrix computePFromX(SimpleMatrix xbiased) {
+        return computePFromUWx(U, W, xbiased);
+    }
+
     private static SimpleMatrix computePFromUh(SimpleMatrix U, SimpleMatrix hbiased) {
         return softmax(U.mult(hbiased));
     }
@@ -336,6 +340,10 @@ public class WindowModel {
         return x;
     }
 
+    /**
+     * Simplest SGD training
+     */
+
     private void updateWeights(List<Datum> buffer) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         String label = buffer.get(windowSize / 2).label;
@@ -376,10 +384,7 @@ public class WindowModel {
         }
     }
 
-    /**
-     * Simplest SGD training
-     */
-    public void train(List<Datum> trainData) {
+   public void train(List<Datum> trainData) {
 
         SimpleMatrix Usaved = U.copy();
         SimpleMatrix Wsaved = W.copy();
@@ -398,13 +403,17 @@ public class WindowModel {
             Wsaved = W.copy();
             Lsaved = L.copy();
          }
-    }
+   }
+
+   /**
+    * Prediction and testing
+    */
 
     public String predictLabel(List<Datum> buffer) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         SimpleMatrix x = getXFromLind(inputIndex);
         SimpleMatrix xbiased = concatenateWithBias(x);
-        SimpleMatrix P = computePFromUWx(this.U, this.W, xbiased);
+        SimpleMatrix P = computePFromX(xbiased);
         return labels.get(argmax(P));
     }
 
