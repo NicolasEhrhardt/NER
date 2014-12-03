@@ -11,18 +11,20 @@ import static cs224n.deep.Utils.*;
 public class WindowModel {
 
     protected SimpleMatrix L, W, U;
-    public int windowSize, wordSize, hiddenSize, numWords, K;
+    public int windowSize, wordSize, hiddenSize, maxEpochs, numWords, K;
     public double lr0, tau; // Base learning rate + time constant
     public List<String> labels;
 
     public Map<String, Integer> wordToNum;
 
-    public WindowModel(int windowSize, int wordSize, int hiddenSize, double lr0, double tau,
+    public WindowModel(int windowSize, int wordSize, int hiddenSize,    // Network parameters
+                       int maxEpochs, double lr0, double tau,           // Optimization parameters
                        Map<String, Integer> wordToNum, List<String> labels) {
         assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
         this.wordSize = wordSize;
         this.hiddenSize = hiddenSize;
+        this.maxEpochs = maxEpochs;
         this.lr0 = lr0;
         this.tau = tau;
         this.wordToNum = wordToNum;
@@ -377,7 +379,7 @@ public class WindowModel {
      * Update U, W, L based on one example, to be used in the SGD
      * @param buffer
      */
-    private void updateWeights(List<Datum> buffer, int epoch) {
+    private void updateWeights(List<Datum> buffer, double lrU, double lrW, double lrL) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         String label = buffer.get(windowSize / 2).label;
 
@@ -404,15 +406,12 @@ public class WindowModel {
         
         
         // Update U
-        double lrU = lr0/(1+((double) epoch/tau));
         U.set(U.plus(lrU, Ugrad));
 
         // Update W
-        double lrW = lr0/(1+((double) epoch/tau));
         W.set(W.plus(lrW, Wgrad));
 
         // Update x -> L
-        double lrL = lr0/(1+((double) epoch/tau));
         x.set(x.plus(lrL, Xgrad));
 
         for (int i = 0; i < inputIndex.size(); i++) {
@@ -424,9 +423,9 @@ public class WindowModel {
     /**
      * Train the three matrices using the passed training data, stops when the precision decreases on the dev set
      * @param trainData
-     * @param devData
+     * @param holdoutData
      */
-    public void train(List<Datum> trainData, List<Datum> devData) {
+    public void train(List<Datum> trainData, List<Datum> holdoutData) {
 
         SimpleMatrix Usaved = U.copy();
         SimpleMatrix Wsaved = W.copy();
@@ -434,32 +433,39 @@ public class WindowModel {
 
         List<List<Datum>> allExamples = yieldExamples(trainData);
         double precision = 0;
-        double new_precision = 0;
-        for (int epoch = 0; epoch < 10; epoch++) {
-            for (List<Datum> buffer: allExamples) {
-                updateWeights(buffer, epoch);
-            }
-            new_precision = devPrecision(devData);
+        double newPrecision = 0;
+        for (int epoch = 0; epoch < maxEpochs; epoch++) {
+            // Compute learning rates for this epoch
+            double lr = lr0 / (1. + ((double) epoch / tau));
 
-            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f, devSet precision %.2f%%",
-                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(), 100*new_precision));
-            if (new_precision < precision){
+            for (List<Datum> buffer: allExamples) {
+                updateWeights(buffer, lr, lr, lr);
+            }
+
+            newPrecision = getPrecision(holdoutData);
+
+            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f, holdout set precision %.2f%%",
+                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(), 100 * newPrecision));
+
+            if (newPrecision < precision){
             	break;
             }
-            precision = new_precision;
+
+            precision = newPrecision;
             Usaved = U.copy();
             Wsaved = W.copy();
             Lsaved = L.copy();
             
         }
     }
+
     /**
      * Computes the precision (correct guesses / nb of tokens) on the devSet with the current parameters U, W, L
-     * @param devData
+     * @param data
      * @return
      */
-    private double devPrecision(List<Datum> devData) {
-        List<List<Datum>> allExamples = yieldExamples(devData);
+    private double getPrecision(List<Datum> data) {
+        List<List<Datum>> allExamples = yieldExamples(data);
         double correct_guesses = 0;
         double tokens = 0;
         for (List<Datum> buffer: allExamples) {
