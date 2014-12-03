@@ -24,7 +24,7 @@ public class NER {
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
-        WindowModel model = new WindowModel(7, 50, 100, 0.001,
+        WindowModel model = new WindowModel(7, 50, 100, 0.1, 1,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
         // Standard loading

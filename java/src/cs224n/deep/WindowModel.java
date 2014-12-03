@@ -12,18 +12,19 @@ public class WindowModel {
 
     protected SimpleMatrix L, W, U;
     public int windowSize, wordSize, hiddenSize, numWords, K;
-    public double lr;
+    public double lr0, tau; // Base learning rate + time constant
     public List<String> labels;
 
     public Map<String, Integer> wordToNum;
 
-    public WindowModel(int windowSize, int wordSize, int hiddenSize, double lr,
+    public WindowModel(int windowSize, int wordSize, int hiddenSize, double lr0, double tau,
                        Map<String, Integer> wordToNum, List<String> labels) {
         assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
         this.wordSize = wordSize;
         this.hiddenSize = hiddenSize;
-        this.lr = lr;
+        this.lr0 = lr0;
+        this.tau = tau;
         this.wordToNum = wordToNum;
         this.numWords = wordToNum.size();
         this.labels = labels;
@@ -376,7 +377,7 @@ public class WindowModel {
      * Update U, W, L based on one example, to be used in the SGD
      * @param buffer
      */
-    private void updateWeights(List<Datum> buffer) {
+    private void updateWeights(List<Datum> buffer, int epoch) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         String label = buffer.get(windowSize / 2).label;
 
@@ -400,15 +401,19 @@ public class WindowModel {
         SimpleMatrix Ugrad = computeUgradFromError(error, hbiased);
         SimpleMatrix Wgrad = computeWgradFromDelta(delta, xbiased);
         SimpleMatrix Xgrad = computeXgradFromDelta(delta, Wtruncated);
-
+        
+        
         // Update U
-        U.set(U.plus(lr, Ugrad));
+        double lrU = lr0/(1+((double) epoch/tau));
+        U.set(U.plus(lrU, Ugrad));
 
         // Update W
-        W.set(W.plus(lr, Wgrad));
+        double lrW = lr0/(1+((double) epoch/tau));
+        W.set(W.plus(lrW, Wgrad));
 
         // Update x -> L
-        x.set(x.plus(lr, Xgrad));
+        double lrL = lr0/(1+((double) epoch/tau));
+        x.set(x.plus(lrL, Xgrad));
 
         for (int i = 0; i < inputIndex.size(); i++) {
             int index = inputIndex.get(i);
@@ -430,7 +435,7 @@ public class WindowModel {
 
         for (int epoch = 0; epoch < 10; epoch++) {
             for (List<Datum> buffer: allExamples) {
-                updateWeights(buffer);
+                updateWeights(buffer, epoch);
             }
 
             System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f",
