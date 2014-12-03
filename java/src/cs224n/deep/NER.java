@@ -28,7 +28,7 @@ public class NER {
         int windowSize = 7;
         int wordSize = 50;
         int hiddenSize = 100;
-        int maxEpochs = 10;
+        int maxEpochs = 50;
         double lr0 = 0.01; // base learning rate
         double tau = 1; // parameter for learning rate decrease speed
         WindowModel model = new WindowModel(
