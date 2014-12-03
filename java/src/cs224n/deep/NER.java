@@ -25,7 +25,12 @@ public class NER {
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
-        WindowModel model = new WindowModel(7, 50, 100, 0.01, 1,
+        int windowSize = 7;
+        int wordSize = 50;
+        int hiddenSize = 100;
+        double lr0 = 0.01; // base learning rate
+        double tau = 1; // parameter for learning rate decrease speed
+        WindowModel model = new WindowModel(windowSize, wordSize, hiddenSize, lr0, tau,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
         // Standard loading
