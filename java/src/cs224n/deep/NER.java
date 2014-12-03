@@ -31,7 +31,7 @@ public class NER {
         int maxEpochs = 50;   // maximum epochs
         double lr0 = 0.01;    // base learning rate
         double tau = 1.;      // learning rate decrease speed
-        double lambda = 1e-6;   // regularization weight
+        double lambda = 1e-6; // regularization weight (use 0 for disabled)
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
                 maxEpochs, lr0, tau, lambda,
