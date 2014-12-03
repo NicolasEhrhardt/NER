@@ -129,4 +129,18 @@ public class Utils {
         }
         return idx_max;
     }
+    
+    public static SimpleMatrix drop(SimpleMatrix v, double dropout) {
+        Random rand = new Random();
+        SimpleMatrix r = SimpleMatrix.random(v.numRows(), v.numCols(), 0, 1, rand);
+        for (int i = 0; i < r.getNumElements(); i++){
+        	if (r.get(i) < dropout){
+        		r.set(i, 1);
+        	}
+        	else{
+        		r.set(i, 0);
+        	}
+        }
+        return v.elementMult(r);
+    }
 }

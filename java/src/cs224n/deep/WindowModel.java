@@ -13,12 +13,14 @@ public class WindowModel {
     protected SimpleMatrix L, W, U;
     public int windowSize, wordSize, hiddenSize, maxEpochs, numWords, K;
     public double lr0, tau, lambda; // Base learning rate + time constant
+    public double dropout; // Probability of keeping a neuron activated
     public List<String> labels;
 
     public Map<String, Integer> wordToNum;
 
     public WindowModel(int windowSize, int wordSize, int hiddenSize,                   // Network parameters
-                       int maxEpochs, double lr0, double tau, double lambda,           // Optimization parameters
+                       int maxEpochs, double lr0, double tau, double lambda, 
+                       double dropout,										           // Optimization parameters
                        Map<String, Integer> wordToNum, List<String> labels) {
         assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
@@ -28,6 +30,7 @@ public class WindowModel {
         this.lr0 = lr0;
         this.tau = tau;
         this.lambda = lambda;
+        this.dropout = dropout;
         this.wordToNum = wordToNum;
         this.numWords = wordToNum.size();
         this.labels = labels;
@@ -385,9 +388,12 @@ public class WindowModel {
         String label = buffer.get(windowSize / 2).label;
 
         SimpleMatrix x = getXFromLind(inputIndex);
+		x = drop(x, dropout);
+		
         SimpleMatrix xbiased = concatenateWithBias(x);
         SimpleMatrix z = W.mult(xbiased);
-
+        z = drop(z, dropout);
+        
         SimpleMatrix h = elementwiseApplyTanh(z);
         SimpleMatrix hbiased = concatenateWithBias(h);
         SimpleMatrix v = U.mult(hbiased);
@@ -474,6 +480,9 @@ public class WindowModel {
             Wsaved = W.copy();
             Lsaved = L.copy();
         }
+        U.scale(dropout);
+        W.scale(dropout);
+        L.scale(dropout);
     }
 
     /**

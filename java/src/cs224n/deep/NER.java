@@ -32,9 +32,10 @@ public class NER {
         double lr0 = 0.01;    // base learning rate
         double tau = 1.;      // learning rate decrease speed
         double lambda = 1e-6; // regularization weight (use 0 for disabled)
+        double dropout = 1;   // probability of keeping a neuron activated during training
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
-                maxEpochs, lr0, tau, lambda,
+                maxEpochs, lr0, tau, lambda, dropout,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
         // Standard loading
