@@ -422,30 +422,57 @@ public class WindowModel {
     }
 
     /**
-     * Train the three matrices using the passed training data
+     * Train the three matrices using the passed training data, stops when the precision decreases on the dev set
      * @param trainData
+     * @param devData
      */
-    public void train(List<Datum> trainData) {
+    public void train(List<Datum> trainData, List<Datum> devData) {
 
         SimpleMatrix Usaved = U.copy();
         SimpleMatrix Wsaved = W.copy();
         SimpleMatrix Lsaved = L.copy();
 
         List<List<Datum>> allExamples = yieldExamples(trainData);
-
+        double precision = 0;
+        double new_precision = 0;
         for (int epoch = 0; epoch < 10; epoch++) {
             for (List<Datum> buffer: allExamples) {
                 updateWeights(buffer, epoch);
             }
+            new_precision = devPrecision(devData);
 
-            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f",
-                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF()));
+            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f, devSet precision %.2f%%",
+                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(), 100*new_precision));
+            if (new_precision < precision){
+            	break;
+            }
+            precision = new_precision;
             Usaved = U.copy();
             Wsaved = W.copy();
             Lsaved = L.copy();
+            
         }
     }
-
+    /**
+     * Computes the precision (correct guesses / nb of tokens) on the devSet with the current parameters U, W, L
+     * @param devData
+     * @return
+     */
+    private double devPrecision(List<Datum> devData) {
+        List<List<Datum>> allExamples = yieldExamples(devData);
+        double correct_guesses = 0;
+        double tokens = 0;
+        for (List<Datum> buffer: allExamples) {
+            Datum middleWord = buffer.get(windowSize / 2);
+            String predictedLabel = predictLabel(buffer);
+            if (middleWord.label.equals(predictedLabel)) {
+            	correct_guesses++;
+            }
+            tokens++;
+        }
+        return correct_guesses/tokens;
+    }
+    
    /**
     * Prediction and testing
     */
