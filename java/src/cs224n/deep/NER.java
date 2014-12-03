@@ -25,26 +25,27 @@ public class NER {
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
-        int windowSize = 7;
-        int wordSize = 50;
-        int hiddenSize = 100;
-        int maxEpochs = 50;
-        double lr0 = 0.01; // base learning rate
-        double tau = 1; // parameter for learning rate decrease speed
+        int windowSize = 7;   // size of window
+        int wordSize = 50;    // size of word vector
+        int hiddenSize = 100; // number of hidden neurons
+        int maxEpochs = 50;   // maximum epochs
+        double lr0 = 0.01;    // base learning rate
+        double tau = 1.;      // learning rate decrease speed
+        double lambda = 1e-6;   // regularization weight
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
-                maxEpochs, lr0, tau,
+                maxEpochs, lr0, tau, lambda,
                 wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
 
         // Standard loading
-        //SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
-        //model.loadVocab(allVecs);
-        //model.initWeights();
+        SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
+        model.loadVocab(allVecs);
+        model.initWeights();
 
         // Loading from files
-        model.loadVocab(SimpleMatrix.loadCSV("data/saved-vocab.csv"));
-        model.loadWeightsU(SimpleMatrix.loadCSV("data/saved-U.csv"));
-        model.loadWeightsW(SimpleMatrix.loadCSV("data/saved-W.csv"));
+        //model.loadVocab(SimpleMatrix.loadCSV("data/saved-vocab.csv"));
+        //model.loadWeightsU(SimpleMatrix.loadCSV("data/saved-U.csv"));
+        //model.loadWeightsW(SimpleMatrix.loadCSV("data/saved-W.csv"));
 
         //System.out.println("-- Computing gradient checks --");
         //System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));

@@ -12,13 +12,13 @@ public class WindowModel {
 
     protected SimpleMatrix L, W, U;
     public int windowSize, wordSize, hiddenSize, maxEpochs, numWords, K;
-    public double lr0, tau; // Base learning rate + time constant
+    public double lr0, tau, lambda; // Base learning rate + time constant
     public List<String> labels;
 
     public Map<String, Integer> wordToNum;
 
-    public WindowModel(int windowSize, int wordSize, int hiddenSize,    // Network parameters
-                       int maxEpochs, double lr0, double tau,           // Optimization parameters
+    public WindowModel(int windowSize, int wordSize, int hiddenSize,                   // Network parameters
+                       int maxEpochs, double lr0, double tau, double lambda,           // Optimization parameters
                        Map<String, Integer> wordToNum, List<String> labels) {
         assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
@@ -27,6 +27,7 @@ public class WindowModel {
         this.maxEpochs = maxEpochs;
         this.lr0 = lr0;
         this.tau = tau;
+        this.lambda = lambda;
         this.wordToNum = wordToNum;
         this.numWords = wordToNum.size();
         this.labels = labels;
@@ -395,7 +396,6 @@ public class WindowModel {
         SimpleMatrix Utruncated = withoutLastCol(U);
         SimpleMatrix Wtruncated = withoutLastCol(W);
 
-        assert (labels.contains(label));
         SimpleMatrix y = indicator(K, labels.indexOf(label));
         SimpleMatrix error = computeError(y, p);
         SimpleMatrix delta = computeDelta(error, Utruncated, z);
@@ -406,14 +406,15 @@ public class WindowModel {
         
         
         // Update U
-        U.set(U.plus(lrU, Ugrad));
+        U.set(U.scale(1. - lambda * lrU).plus(lrU, Ugrad));
 
         // Update W
-        W.set(W.plus(lrW, Wgrad));
+        W.set(W.scale(1. - lambda * lrW).plus(lrW, Wgrad));
 
-        // Update x -> L
-        x.set(x.plus(lrL, Xgrad));
+        // Update x
+        x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
 
+        // Reinsert x in L
         for (int i = 0; i < inputIndex.size(); i++) {
             int index = inputIndex.get(i);
             L.insertIntoThis(index, 0, x.extractMatrix(i * wordSize, (i + 1) * wordSize, 0, 1).transpose());
@@ -432,20 +433,37 @@ public class WindowModel {
         SimpleMatrix Lsaved = L.copy();
 
         List<List<Datum>> allExamples = yieldExamples(trainData);
+        List<List<Datum>> holdoutExamples = yieldExamples(holdoutData);
+
         double precision = 0;
         double newPrecision = 0;
         for (int epoch = 0; epoch < maxEpochs; epoch++) {
+            long startTime = System.currentTimeMillis();
+
             // Compute learning rates for this epoch
             double lr = lr0 / (1. + ((double) epoch / tau));
 
+            int n = 0;
             for (List<Datum> buffer: allExamples) {
                 updateWeights(buffer, lr, lr, lr);
-            }
+                n++;
 
-            newPrecision = getPrecision(holdoutData);
+                if (n % 10000 == 0) {
+                    long sofarTime = System.currentTimeMillis();
+                    System.out.print(String.format(
+                            "\rTraining (%d examples seen in %ds)", n, (sofarTime - startTime) / 1000));
+                }
+             }
 
-            System.out.println(String.format("Epochs %d, delta U %f, delta W %f, delta L %f, holdout set precision %.2f%%",
-                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(), 100 * newPrecision));
+            System.out.print("\rComputing error.");
+            newPrecision = getPrecision(holdoutExamples);
+
+            long endTime = System.currentTimeMillis();
+            System.out.println(String.format(
+                    "\rEpochs %d, delta U %f, delta W %f, delta L %f, " +
+                            "holdout set precision %.2f%%, (iteration time %ds).",
+                    epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(),
+                    100 * newPrecision, (endTime - startTime) / 1000));
 
             if (newPrecision < precision){
             	break;
@@ -455,17 +473,15 @@ public class WindowModel {
             Usaved = U.copy();
             Wsaved = W.copy();
             Lsaved = L.copy();
-            
         }
     }
 
     /**
      * Computes the precision (correct guesses / nb of tokens) on the devSet with the current parameters U, W, L
-     * @param data
+     * @param allExamples
      * @return
      */
-    private double getPrecision(List<Datum> data) {
-        List<List<Datum>> allExamples = yieldExamples(data);
+    private double getPrecision(List<List<Datum>> allExamples) {
         double correct_guesses = 0;
         double tokens = 0;
         for (List<Datum> buffer: allExamples) {
