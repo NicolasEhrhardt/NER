@@ -393,6 +393,7 @@ public class WindowModel {
 		SimpleMatrix x = xorig.elementMult(xdropped);
         SimpleMatrix ones = new SimpleMatrix(xdropped);
         ones.set(1.0);
+        SimpleMatrix otherx = xorig.elementMult(xdropped.negative().plus(ones));
 
         SimpleMatrix xbiased = concatenateWithBias(x);
         SimpleMatrix z = W.mult(xbiased);
@@ -425,8 +426,11 @@ public class WindowModel {
         // Update x
         x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
 
-        // Replace x value not used in x
-        x.set(x.plus(xorig.elementMult(xdropped.negative().plus(ones))));
+        // Keep only gradient for turned on units
+        x.set(x.elementMult(xdropped));
+
+        // Replace x value for turned off units
+        x.set(x.plus(otherx));
 
         // Reinsert x in L
         for (int i = 0; i < inputIndex.size(); i++) {
