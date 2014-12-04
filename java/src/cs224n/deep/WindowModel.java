@@ -17,32 +17,9 @@ public class WindowModel {
     public List<String> labels;
     
     public double lrW0, lrL0, lrU0;
-    private boolean useIndepLrs = false;
 
     public Map<String, Integer> wordToNum;
 
-    public WindowModel(int windowSize, int wordSize, int hiddenSize,                // Network parameters
-                       int maxEpochs, double lr0, double tau, double lambda,        // Optimization parameters
-                       double dropoutX, double dropoutZ,
-                       Map<String, Integer> wordToNum, List<String> labels) {
-        assert (windowSize % 2 == 1);
-        this.windowSize = windowSize;
-        this.wordSize = wordSize;
-        this.hiddenSize = hiddenSize;
-        this.maxEpochs = maxEpochs;
-        this.lr0 = lr0;
-        this.tau = tau;
-        this.lambda = lambda;
-        this.dropoutX = dropoutX;
-        this.dropoutZ = dropoutZ;
-        this.wordToNum = wordToNum;
-        this.numWords = wordToNum.size();
-        this.labels = labels;
-        this.K = labels.size();
-        System.out.println(String.format("window size: %d, word size: %d, hidden size: %d, max epochs: %d, base learning rate: %f tau: %f, lambda: %f, dropoutX: %f, dropoutV: %f", 
-        		windowSize, wordSize, hiddenSize, maxEpochs, lr0, tau, lambda, dropoutX, dropoutZ));
-    }
-    
     public WindowModel(int windowSize, int wordSize, int hiddenSize,                				// Network parameters
             int maxEpochs, double lrU0, double lrW0, double lrL0, double tau, double lambda,        // Optimization parameters
             double dropoutX, double dropoutZ,
@@ -63,9 +40,13 @@ public class WindowModel {
 		this.numWords = wordToNum.size();
 		this.labels = labels;
 		this.K = labels.size();
-		this.useIndepLrs = true;
-		System.out.println(String.format("window size: %d, word size: %d, hidden size: %d, max epochs: %d, base learning rate (U): %f, base learning rate (W): %f, base learning rate (L): %f, tau: %f, lambda: %f, dropoutX: %f, dropoutV: %f", 
-        		windowSize, wordSize, hiddenSize, maxEpochs, lrU0, lrW0, lrL0, tau, lambda, dropoutX, dropoutZ));
+		System.out.println(String.format(
+                "Window size: %d, word size: %d, hidden size: %d\n" +
+                "max epochs: %d, learning rate (U, W, L): %f, %f, %f\n" +
+                "tau: %f, lambda: %f, dropout (X, Z) : %.2f, %.2f",
+        		windowSize, wordSize, hiddenSize,
+                maxEpochs, lrU0, lrW0, lrL0,
+                tau, lambda, dropoutX, dropoutZ));
     }
 
 
@@ -451,9 +432,11 @@ public class WindowModel {
         
         // Update U
         U.set(U.scale(1. - lambda * lrU).plus(lrU, Ugrad));
+        //U = normalizeRows(U, 1);
 
         // Update W
         W.set(W.scale(1. - lambda * lrW).plus(lrW, Wgrad));
+        //W = normalizeRows(W, 1);
 
         // Update x
         x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
@@ -491,24 +474,9 @@ public class WindowModel {
             long startTime = System.currentTimeMillis();
 
             // Compute learning rates for this epoch
-            double lr = lr0 / (1. + ((double) epoch / tau));
-            double lrU;
-            double lrW;
-            double lrL;
-            
-            if(!this.useIndepLrs)
-            {
-            	lrU= lr;
-            	lrW = lr;
-            	lrL = lr;
-            }
-            else
-            {
-            	lrU = lrU0 / (1. + ((double) epoch / tau));
-            	lrW = lrW0 / (1. + ((double) epoch / tau));
-            	lrL = lrL0 / (1. + ((double) epoch / tau));
-            }
-            
+            double lrU = lrU0 / (1. + ((double) epoch / tau));
+            double lrW = lrW0 / (1. + ((double) epoch / tau));
+            double lrL = lrL0 / (1. + ((double) epoch / tau));
 
             int n = 0;
             for (List<Datum> buffer: allExamples) {

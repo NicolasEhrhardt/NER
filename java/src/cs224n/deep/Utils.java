@@ -144,4 +144,16 @@ public class Utils {
 
         return r;
     }
+
+    public static SimpleMatrix normalizeRows(SimpleMatrix m, double coef) {
+        for (int i = 0; i < m.numRows(); i++) {
+            SimpleMatrix row = m.extractVector(true, i);
+            double norm = row.normF();
+            if (norm > coef) {
+                m.insertIntoThis(i, 0, row.scale(1. / coef));
+            }
+        }
+
+        return m;
+    }
 }
