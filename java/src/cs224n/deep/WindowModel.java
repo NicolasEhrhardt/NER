@@ -389,11 +389,11 @@ public class WindowModel {
         String label = buffer.get(windowSize / 2).label;
 
         SimpleMatrix xorig = getXFromLind(inputIndex);
-		SimpleMatrix xdropped = getDropvector(xorig.numRows(), xorig.numCols(), dropoutX);
-		SimpleMatrix x = xorig.elementMult(xdropped);
-        SimpleMatrix ones = new SimpleMatrix(xdropped);
+		SimpleMatrix xkeptind = getDropvector(xorig.numRows(), xorig.numCols(), dropoutX);
+		SimpleMatrix x = xorig.elementMult(xkeptind);
+        SimpleMatrix ones = new SimpleMatrix(xkeptind);
         ones.set(1.0);
-        SimpleMatrix otherx = xorig.elementMult(xdropped.negative().plus(ones));
+        SimpleMatrix otherx = xorig.elementMult(xkeptind.negative().plus(ones));
 
         SimpleMatrix xbiased = concatenateWithBias(x);
         SimpleMatrix z = W.mult(xbiased);
@@ -427,7 +427,7 @@ public class WindowModel {
         x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
 
         // Keep only gradient for turned on units
-        x.set(x.elementMult(xdropped));
+        x.set(x.elementMult(xkeptind));
 
         // Replace x value for turned off units
         x.set(x.plus(otherx));
