@@ -15,6 +15,9 @@ public class WindowModel {
     public double lr0, tau, lambda; // Base learning rate + time constant
     public double dropoutX, dropoutZ; // Probability of keeping a neuron activated
     public List<String> labels;
+    
+    public double lrW0, lrL0, lrU0;
+    private boolean useIndepLrs = false;
 
     public Map<String, Integer> wordToNum;
 
@@ -36,7 +39,36 @@ public class WindowModel {
         this.numWords = wordToNum.size();
         this.labels = labels;
         this.K = labels.size();
+        System.out.println(String.format("window size: %d, word size: %d, hidden size: %d, max epochs: %d, base learning rate: %f tau: %f, lambda: %f, dropoutX: %f, dropoutV: %f", 
+        		windowSize, wordSize, hiddenSize, maxEpochs, lr0, tau, lambda, dropoutX, dropoutZ));
     }
+    
+    public WindowModel(int windowSize, int wordSize, int hiddenSize,                				// Network parameters
+            int maxEpochs, double lrU0, double lrW0, double lrL0, double tau, double lambda,        // Optimization parameters
+            double dropoutX, double dropoutZ,
+            Map<String, Integer> wordToNum, List<String> labels) {
+		assert (windowSize % 2 == 1);
+		this.windowSize = windowSize;
+		this.wordSize = wordSize;
+		this.hiddenSize = hiddenSize;
+		this.maxEpochs = maxEpochs;
+		this.lrL0 = lrL0;
+		this.lrW0 = lrW0;
+		this.lrU0 = lrU0;
+		this.tau = tau;
+		this.lambda = lambda;
+		this.dropoutX = dropoutX;
+		this.dropoutZ = dropoutZ;
+		this.wordToNum = wordToNum;
+		this.numWords = wordToNum.size();
+		this.labels = labels;
+		this.K = labels.size();
+		this.useIndepLrs = true;
+		System.out.println(String.format("window size: %d, word size: %d, hidden size: %d, max epochs: %d, base learning rate (U): %f, base learning rate (W): %f, base learning rate (L): %f, tau: %f, lambda: %f, dropoutX: %f, dropoutV: %f", 
+        		windowSize, wordSize, hiddenSize, maxEpochs, lrU0, lrW0, lrL0, tau, lambda, dropoutX, dropoutZ));
+    }
+
+
 
     /**
      * Loaders and dumpers
@@ -460,10 +492,27 @@ public class WindowModel {
 
             // Compute learning rates for this epoch
             double lr = lr0 / (1. + ((double) epoch / tau));
+            double lrU;
+            double lrW;
+            double lrL;
+            
+            if(!this.useIndepLrs)
+            {
+            	lrU= lr;
+            	lrW = lr;
+            	lrL = lr;
+            }
+            else
+            {
+            	lrU = lrU0 / (1. + ((double) epoch / tau));
+            	lrW = lrW0 / (1. + ((double) epoch / tau));
+            	lrL = lrL0 / (1. + ((double) epoch / tau));
+            }
+            
 
             int n = 0;
             for (List<Datum> buffer: allExamples) {
-                updateWeights(buffer, lr, lr, lr);
+                updateWeights(buffer, lrU, lrW, lrL);
                 n++;
 
                 if (n % 10000 == 0) {

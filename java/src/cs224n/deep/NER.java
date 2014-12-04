@@ -19,9 +19,6 @@ public class NER {
         List<Datum> devData = FeatureFactory.readTestData(args[1]);
         List<Datum> testData = FeatureFactory.readTestData(args[2]);
 
-        //	read the train and test data
-        //TODO: Implement this function (just reads in vocab and word vectors)
-
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
@@ -31,16 +28,22 @@ public class NER {
         int wordSize = 50;      // size of word vector
         int hiddenSize = 100;   // number of hidden neurons
         int maxEpochs = 50;     // maximum epochs
-        double lr0 = 0.01;      // base learning rate
-        double tau = .5;        // learning rate decrease speed
+        double lr0 = 0.001;     // base learning rate
+        double lrU0 = 0.001;	// base learning rate for U
+        double lrW0 = 0.001;	// base learning rate for W
+        double lrL0 = 0.001;	// base learning rate for L
+        double tau = .2;        // learning rate decrease speed
         double lambda = 1e-3;   // regularization weight (use 0 for disabled)
         double dropoutX = 0.9;  // probability of keeping X activated during training
         double dropoutV = 0.5;  // probability of keeping V activated during training
-        WindowModel model = new WindowModel(
+        /*WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
                 maxEpochs, lr0, tau, lambda, dropoutX, dropoutV,
+                wordToNum, labels);*/
+        WindowModel model = new WindowModel(
+                windowSize, wordSize, hiddenSize,
+                maxEpochs, lrU0, lrW0, lrL0, tau, lambda, dropoutX, dropoutV,
                 wordToNum, labels);
-
         // Standard loading
         SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
         model.loadVocab(allVecs);
@@ -55,7 +58,7 @@ public class NER {
         //System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));
         //System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(1, 1e-4)));
         //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
-
+        
         System.out.println("-- Training data --");
         model.train(trainData, devData);
 
