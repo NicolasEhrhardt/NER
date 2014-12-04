@@ -25,18 +25,21 @@ public class NER {
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
-        int windowSize = 7;   // size of window
-        int wordSize = 50;    // size of word vector
-        int hiddenSize = 100; // number of hidden neurons
-        int maxEpochs = 50;   // maximum epochs
-        double lr0 = 0.01;    // base learning rate
-        double tau = 1.;      // learning rate decrease speed
-        double lambda = 1e-6; // regularization weight (use 0 for disabled)
-        double dropout = 1;   // probability of keeping a neuron activated during training
+        List<String> labels = Arrays.asList("O", "ORG", "PER", "LOC", "MISC");
+
+        int windowSize = 7;     // size of window
+        int wordSize = 50;      // size of word vector
+        int hiddenSize = 100;   // number of hidden neurons
+        int maxEpochs = 50;     // maximum epochs
+        double lr0 = 0.01;      // base learning rate
+        double tau = .5;        // learning rate decrease speed
+        double lambda = 1e-3;   // regularization weight (use 0 for disabled)
+        double dropoutX = 0.9;  // probability of keeping X activated during training
+        double dropoutV = 0.5;  // probability of keeping V activated during training
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
-                maxEpochs, lr0, tau, lambda, dropout,
-                wordToNum, Arrays.asList("O", "ORG", "PER", "LOC", "MISC"));
+                maxEpochs, lr0, tau, lambda, dropoutX, dropoutV,
+                wordToNum, labels);
 
         // Standard loading
         SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
@@ -52,7 +55,6 @@ public class NER {
         //System.out.println(String.format("U gradient check error: %f", model.computeUgradCheck(100, 1e-4)));
         //System.out.println(String.format("W gradient check error: %f", model.computeWgradCheck(1, 1e-4)));
         //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
-
 
         System.out.println("-- Training data --");
         model.train(trainData, devData);

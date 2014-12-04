@@ -13,14 +13,14 @@ public class WindowModel {
     protected SimpleMatrix L, W, U;
     public int windowSize, wordSize, hiddenSize, maxEpochs, numWords, K;
     public double lr0, tau, lambda; // Base learning rate + time constant
-    public double dropout; // Probability of keeping a neuron activated
+    public double dropoutX, dropoutZ; // Probability of keeping a neuron activated
     public List<String> labels;
 
     public Map<String, Integer> wordToNum;
 
-    public WindowModel(int windowSize, int wordSize, int hiddenSize,                   // Network parameters
-                       int maxEpochs, double lr0, double tau, double lambda, 
-                       double dropout,										           // Optimization parameters
+    public WindowModel(int windowSize, int wordSize, int hiddenSize,                // Network parameters
+                       int maxEpochs, double lr0, double tau, double lambda,        // Optimization parameters
+                       double dropoutX, double dropoutZ,
                        Map<String, Integer> wordToNum, List<String> labels) {
         assert (windowSize % 2 == 1);
         this.windowSize = windowSize;
@@ -30,7 +30,8 @@ public class WindowModel {
         this.lr0 = lr0;
         this.tau = tau;
         this.lambda = lambda;
-        this.dropout = dropout;
+        this.dropoutX = dropoutX;
+        this.dropoutZ = dropoutZ;
         this.wordToNum = wordToNum;
         this.numWords = wordToNum.size();
         this.labels = labels;
@@ -387,13 +388,17 @@ public class WindowModel {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         String label = buffer.get(windowSize / 2).label;
 
-        SimpleMatrix x = getXFromLind(inputIndex);
-		x = drop(x, dropout);
-		
+        SimpleMatrix xorig = getXFromLind(inputIndex);
+		SimpleMatrix xdropped = getDropvector(xorig.numRows(), xorig.numCols(), dropoutX);
+		SimpleMatrix x = xorig.elementMult(xdropped);
+        SimpleMatrix ones = new SimpleMatrix(xdropped);
+        ones.set(1.0);
+
         SimpleMatrix xbiased = concatenateWithBias(x);
         SimpleMatrix z = W.mult(xbiased);
-        z = drop(z, dropout);
-        
+        SimpleMatrix zdropped = getDropvector(z.numRows(), z.numCols(), dropoutZ);
+        z = z.elementMult(zdropped);
+
         SimpleMatrix h = elementwiseApplyTanh(z);
         SimpleMatrix hbiased = concatenateWithBias(h);
         SimpleMatrix v = U.mult(hbiased);
@@ -419,6 +424,9 @@ public class WindowModel {
 
         // Update x
         x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
+
+        // Replace x value not used in x
+        x.set(x.plus(xorig.elementMult(xdropped.negative().plus(ones))));
 
         // Reinsert x in L
         for (int i = 0; i < inputIndex.size(); i++) {
@@ -462,11 +470,11 @@ public class WindowModel {
              }
 
             System.out.print("\rComputing error.");
-            newPrecision = getPrecision(holdoutExamples);
+            newPrecision = getPrecision(holdoutExamples, U.scale(dropoutZ), W.scale(dropoutX));
 
             long endTime = System.currentTimeMillis();
             System.out.println(String.format(
-                    "\rEpochs %d, delta U %f, delta W %f, delta L %f, " +
+                    "\rEpoch %d, delta U %f, delta W %f, delta L %f, " +
                             "holdout set precision %.2f%%, (iteration time %ds).",
                     epoch, U.minus(Usaved).normF(), W.minus(Wsaved).normF(), L.minus(Lsaved).normF(),
                     100 * newPrecision, (endTime - startTime) / 1000));
@@ -480,9 +488,9 @@ public class WindowModel {
             Wsaved = W.copy();
             Lsaved = L.copy();
         }
-        U.scale(dropout);
-        W.scale(dropout);
-        L.scale(dropout);
+
+        U.scale(dropoutZ);
+        W.scale(dropoutX);
     }
 
     /**
@@ -490,12 +498,12 @@ public class WindowModel {
      * @param allExamples
      * @return
      */
-    private double getPrecision(List<List<Datum>> allExamples) {
+    public double getPrecision(List<List<Datum>> allExamples, SimpleMatrix U, SimpleMatrix W) {
         double correct_guesses = 0;
         double tokens = 0;
         for (List<Datum> buffer: allExamples) {
             Datum middleWord = buffer.get(windowSize / 2);
-            String predictedLabel = predictLabel(buffer);
+            String predictedLabel = predictLabel(buffer, U, W);
             if (middleWord.label.equals(predictedLabel)) {
             	correct_guesses++;
             }
@@ -513,12 +521,21 @@ public class WindowModel {
      * @param buffer
      * @return
      */
-    public String predictLabel(List<Datum> buffer) {
+    public String predictLabel(List<Datum> buffer, SimpleMatrix U, SimpleMatrix W) {
         List<Integer> inputIndex = getLindFromBuffer(buffer);
         SimpleMatrix x = getXFromLind(inputIndex);
         SimpleMatrix xbiased = concatenateWithBias(x);
-        SimpleMatrix P = computePFromX(xbiased);
+        SimpleMatrix P = computePFromUWx(U, W, xbiased);
         return labels.get(argmax(P));
+    }
+
+    /**
+     * Default predict label
+     * @param buffer
+     * @return
+     */
+    public String predictLabel(List<Datum> buffer) {
+        return predictLabel(buffer, U, W);
     }
 
     /**
