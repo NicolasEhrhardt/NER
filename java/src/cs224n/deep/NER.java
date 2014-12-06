@@ -36,11 +36,13 @@ public class NER {
         double lambda = Double.valueOf(properties.getProperty("lambda", "13-3"));   // regularization weight (use 0 for disabled)
         double dropoutX = Double.valueOf(properties.getProperty("dropoutX", "1."));  // probability of keeping X activated during training
         double dropoutZ = Double.valueOf(properties.getProperty("dropoutZ", "1."));  // probability of keeping Z activated during training
+
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
                 maxEpochs, lrU0, lrW0, lrL0,
                 tau, lambda, dropoutX, dropoutZ,
                 wordToNum, labels);
+
         // Standard loading
         //model.loadVocab(FeatureFactory.readWordVectors("data/wordVectors.txt"));
         model.initVocab();
