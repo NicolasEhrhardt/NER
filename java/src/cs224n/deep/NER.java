@@ -9,40 +9,49 @@ import org.ejml.simple.SimpleMatrix;
 public class NER {
     
     public static void main(String[] args) throws IOException {
-        if (args.length < 3) {
-            System.out.println("USAGE: java -cp classes NER ../data/train ../data/dev ../data/test");
+        if (args.length != 1) {
+            System.out.println("USAGE: java -cp classes NER config.properties");
             return;
         }
 
+        InputStream inputStream = new FileInputStream(args[0]);
+        if (inputStream == null) {
+            throw new FileNotFoundException(String.format("File %s not found", args[0]));
+        }
+
+        Properties properties = new Properties();
+        properties.load(inputStream);
+        System.setProperties(properties);
+
         // this reads in the train and test datasets
-        List<Datum> trainData = FeatureFactory.readTrainData(args[0]);
-        List<Datum> devData = FeatureFactory.readTestData(args[1]);
-        List<Datum> testData = FeatureFactory.readTestData(args[2]);
+        List<Datum> trainData = FeatureFactory.readTrainData(properties.getProperty("trainFile"));
+        List<Datum> holdoutData = FeatureFactory.readTestData(properties.getProperty("holdoutFile"));
+        List<Datum> testData = FeatureFactory.readTestData(properties.getProperty("testFile"));
 
         // initialize model
         System.out.println("-- Initialized --");
         Map<String, Integer> wordToNum = FeatureFactory.initializeVocab("data/vocab.txt");
         List<String> labels = Arrays.asList("O", "ORG", "PER", "LOC", "MISC");
 
-        int windowSize = 7;     // size of window
-        int wordSize = 50;      // size of word vector
-        int hiddenSize = 100;   // number of hidden neurons
-        int maxEpochs = 50;     // maximum epochs
-        double lrU0 = 1e-2;	// base learning rate for U
-        double lrW0 = 1e-2;	// base learning rate for W
-        double lrL0 = 1e-2;	// base learning rate for L
-        double tau = .2;        // learning rate decrease speed
-        double lambda = 1e-3;   // regularization weight (use 0 for disabled)
-        double dropoutX = 0.7;  // probability of keeping X activated during training
-        double dropoutZ = 0.5;  // probability of keeping Z activated during training
+        int windowSize = Integer.getInteger("windowSize", 7);     // size of window
+        int wordSize = Integer.getInteger("wordSize", 50);      // size of word vector
+        int hiddenSize = Integer.getInteger("hiddenSize", 100);   // number of hidden neurons
+        int maxEpochs = Integer.getInteger("maxEpochs", 50);     // maximum epochs
+        double lrU0 = Double.valueOf(properties.getProperty("lrU0", "1e-2"));	// base learning rate for U
+        double lrW0 = Double.valueOf(properties.getProperty("lrW0", "1e-2"));	// base learning rate for W
+        double lrL0 = Double.valueOf(properties.getProperty("lrL0", "1e-2"));	// base learning rate for L
+        double tau = Double.valueOf(properties.getProperty("tau", "0.5"));        // learning rate decrease speed
+        double lambda = Double.valueOf(properties.getProperty("lambda", "13-3"));   // regularization weight (use 0 for disabled)
+        double dropoutX = Double.valueOf(properties.getProperty("dropoutX", "1."));  // probability of keeping X activated during training
+        double dropoutZ = Double.valueOf(properties.getProperty("dropoutZ", "1."));  // probability of keeping Z activated during training
         WindowModel model = new WindowModel(
                 windowSize, wordSize, hiddenSize,
                 maxEpochs, lrU0, lrW0, lrL0,
                 tau, lambda, dropoutX, dropoutZ,
                 wordToNum, labels);
         // Standard loading
-        SimpleMatrix allVecs = FeatureFactory.readWordVectors("data/wordVectors.txt");
-        model.loadVocab(allVecs);
+        //model.loadVocab(FeatureFactory.readWordVectors("data/wordVectors.txt"));
+        model.initVocab();
         model.initWeights();
 
         // Loading from files
@@ -56,7 +65,7 @@ public class NER {
         //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
         
         System.out.println("-- Training data --");
-        model.train(trainData, devData);
+        model.train(trainData, holdoutData);
 
         model.dumpVocab("data/saved-vocab.csv");
         model.dumpWeightsU("data/saved-U.csv");
