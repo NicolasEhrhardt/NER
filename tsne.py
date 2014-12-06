@@ -123,7 +123,8 @@ def tsne(X = Math.array([]), no_dims = 2, initial_dims = 50, perplexity = 30.0):
 	P = P / Math.sum(P);
 	P = P * 4;									# early exaggeration
 	P = Math.maximum(P, 1e-12);
-	
+	old_error = 0;
+ 
 	# Run iterations
 	for iter in range(max_iter):
 		
@@ -157,8 +158,15 @@ def tsne(X = Math.array([]), no_dims = 2, initial_dims = 50, perplexity = 30.0):
 			
 		# Stop lying about P-values
 		if iter == 100:
-			P = P / 4;
-			
+                 P = P / 4;
+		new_error = Math.sum(P * Math.log(P / Q));
+           
+           # Stopping criterion
+		if abs(new_error-old_error)/new_error < 10e-6:
+			break			
+
+		old_error = new_error
+
 	# Return solution
 	return Y;
 		
