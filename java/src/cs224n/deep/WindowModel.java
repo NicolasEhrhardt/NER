@@ -89,6 +89,11 @@ public class WindowModel {
         U = helperInitWeights(hiddenSize + 1, K, rand);
     }
 
+    public void initVocab() {
+        Random rand = new Random();
+        L = helperInitWeights(wordSize, wordToNum.size(), rand);
+    }
+
     private SimpleMatrix helperInitWeights(int fanin, int fanout, Random rand) {
         double eps = Math.sqrt(6 / (double) (fanin + fanout));
         return SimpleMatrix.random(fanout, fanin, -eps, +eps, rand);
@@ -439,7 +444,7 @@ public class WindowModel {
         //W = normalizeRows(W, 1);
 
         // Update x
-        x.set(x.scale(1. - lambda * lrL).plus(lrL, Xgrad));
+        x.set(x.plus(lrL, Xgrad));
 
         // Keep only gradient for turned on units
         x.set(x.elementMult(xkeptind));
