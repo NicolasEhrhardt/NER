@@ -12,10 +12,6 @@ public class NER {
         }
 
         InputStream inputStream = new FileInputStream(args[0]);
-        if (inputStream == null) {
-            throw new FileNotFoundException(String.format("File %s not found", args[0]));
-        }
-
         Properties properties = new Properties();
         properties.load(inputStream);
 
