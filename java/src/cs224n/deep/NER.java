@@ -3,9 +3,6 @@ package cs224n.deep;
 import java.util.*;
 import java.io.*;
 
-import org.ejml.simple.SimpleMatrix;
-
-
 public class NER {
     
     public static void main(String[] args) throws IOException {
@@ -64,7 +61,7 @@ public class NER {
         //System.out.println(String.format("X gradient check error: %f", model.computeXgradCheck(1, 1e-4)));
         
         System.out.println("-- Training data --");
-        //model.train(trainData, holdoutData);
+        model.train(trainData, holdoutData);
 
         model.dumpWeightsU("data/saved-U.csv");
         model.dumpWeigthsW("data/saved-W.csv");
